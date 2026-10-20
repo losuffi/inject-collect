@@ -1,0 +1,44 @@
+/* ---------- ① 同意 ---------- */
+.checkcard { display: flex; gap: 12px; align-items: flex-start; padding: 12px; background: var(--card); border-radius: 10px;
+  font-size: 14px; line-height: 1.5; }
+.checkcard input { width: 22px; height: 22px; margin: 0; accent-color: var(--brand); flex: none; }
+.wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.opt.tall { height: 40px; font-size: 14px; }
+.fitz { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.fitz .opt { height: 58px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; }
+.swatch { width: 22px; height: 22px; border-radius: 11px; display: block; }
+.fitz .opt:first-child .swatch { border: 1px solid #D9C4B4; }
+
+/* ---------- ② 记录 ---------- */
+.inline-date { border: 0; background: transparent; color: var(--ink); font-size: 13px; padding: 0; width: auto; min-width: 0; }
+.tcard { display: flex; flex-direction: column; gap: 12px; }
+.pillselect { border: 0; appearance: none; -webkit-appearance: none; font-size: 12px; padding: 3px 8px; text-align: center; }
+.input.small { height: 40px; padding: 0 10px; font-size: 14px; }
+.dose-input { border: 0; background: transparent; font-size: 22px; text-align: right; width: 4.2em; padding: 0; color: var(--ink); }
+.dose-input:focus { outline: none; border-bottom: 1.5px solid var(--brand); }
+.gauge { position: relative; height: 22px; border: 1.5px solid var(--ink2); border-radius: 4px; overflow: hidden; background: var(--card); }
+.gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; }
+.gauge-ticks { position: absolute; inset: 0; display: flex; justify-content: space-between; padding: 0 1px; pointer-events: none; }
+.gauge-ticks span { width: 1px; background: var(--ink2); }
+.gauge input[type='range'] { position: absolute; inset: -6px 0; width: 100%; height: calc(100% + 12px); margin: 0; opacity: 0; cursor: ew-resize; touch-action: none; }
+
+/* ---------- ④ 复诊 ---------- */
+.fu-time { gap: 12px; align-items: stretch; }
+.vline { width: 1px; background: var(--line3); }
+.fu-date { border: 0; background: transparent; font-size: 18px; padding: 0; color: var(--ink); min-width: 0; width: 100%; }
+.wbar { position: relative; height: 10px; border-radius: 5px; background: var(--seg); }
+.wbar-win { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: #A9D2B6; }
+.wbar-mark { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; background: var(--ink); }
+.legend.big { font-size: 16px; font-weight: 700; color: var(--ink); }
+.opt.gais { min-height: 44px; padding: 0 14px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+.opt.gais .mono { color: var(--muted); }
+.opt.gais.on { font-weight: 500; }
+.opt.gais.on .mono { color: inherit; }
+.sat { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.sat .opt { height: 44px; font-size: 15px; }
+.opt.pill { height: 36px; border-radius: 18px; }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; font-size: 13px; }
+.checks li { display: flex; justify-content: space-between; }
+.checks a { color: var(--warn); }
+.done-banner { padding: 12px; border-radius: 10px; background: var(--ok-bg); color: var(--ok-ink); font-size: 14px; text-align: center; }

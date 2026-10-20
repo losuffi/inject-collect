@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dev-dist/
+*.log
+.claude/
+
+# 需求与设计稿只保留在本机，不进仓库
+SPEC.md
+design/
