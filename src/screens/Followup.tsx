@@ -28,8 +28,30 @@ export function FollowupStep({ c, update }: StepProps) {
   const inWin = checks.window;
   const pct = (n: number) => `${(Math.min(SCALE_DAYS, Math.max(0, n)) / SCALE_DAYS) * 100}%`;
 
+  const skipped = checks.skipped;
+  const fuPhotoCount = c.photos.filter((p) => p.phase === 'followup').length;
+
+  function toggleSkip(on: boolean) {
+    if (on && (f || fuPhotoCount)) {
+      const what = [f && '复诊评估', fuPhotoCount && `${fuPhotoCount} 张复诊照`].filter(Boolean).join('和');
+      if (!confirm(`本例已有${what}。标记为无复诊后，这些内容会保留在本机，但不会导出到数据集。确定吗？`)) return;
+    }
+    update((x) => ({ ...x, followupSkipped: on }));
+  }
+
   return (
     <main class="page" style={{ gap: 20 }}>
+      <label class={`checkcard skipcard ${skipped ? 'on' : ''}`}>
+        <input type="checkbox" role="switch" checked={skipped} onChange={(e) => toggleSkip(e.currentTarget.checked)} />
+        <span class="stack" style={{ gap: 2 }}>
+          <b style={{ fontWeight: 500 }}>本例无复诊</b>
+          <span class="muted" style={{ fontSize: 12 }}>
+            求美者未复诊、失访或无法获得复诊信息时打开。可以不填复诊信息直接完成病例，数据集中标记为无复诊数据。
+          </span>
+        </span>
+      </label>
+
+      {!skipped && (<>
       <section class="stack" style={{ gap: 10 }}>
         <h2 class="h2">复诊时间</h2>
         <div class="card row fu-time">
@@ -97,6 +119,7 @@ export function FollowupStep({ c, update }: StepProps) {
         <input class="input" style={{ marginTop: 10, fontSize: 14 }} placeholder="备注（可选）" value={f?.note ?? ''}
           onInput={(e) => setF({ note: e.currentTarget.value })} />
       </fieldset>
+      </>)}
 
       <section class="card stack" style={{ gap: 10 }}>
         <h2 style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>入库检查</h2>
@@ -104,10 +127,14 @@ export function FollowupStep({ c, update }: StepProps) {
           <Check label="同意书" ok={checks.consent} href={caseHref(c.id, 'consent')} />
           <Check label="注射记录" ok={checks.treatments} href={caseHref(c.id, 'treatment')} />
           <Check label="术前照" ok={checks.pre.done === checks.pre.total} text={`${checks.pre.done}/${checks.pre.total}`} href={caseHref(c.id, 'photos')} />
-          <Check label="复诊照" ok={checks.followupPhotos.done === checks.followupPhotos.total}
-            text={`${checks.followupPhotos.done}/${checks.followupPhotos.total}`} href={caseHref(c.id, 'photos', 'phase=followup')} />
-          <Check label="复诊窗口" ok={checks.window} soft />
-          <Check label="评估" ok={checks.evaluation} />
+          {skipped ? (
+            <li><span>复诊</span><b class="muted" style={{ fontWeight: 500 }}>无复诊 · 跳过</b></li>
+          ) : (<>
+            <Check label="复诊照" ok={checks.followupPhotos.done === checks.followupPhotos.total}
+              text={`${checks.followupPhotos.done}/${checks.followupPhotos.total}`} href={caseHref(c.id, 'photos', 'phase=followup')} />
+            <Check label="复诊窗口" ok={checks.window} soft />
+            <Check label="评估" ok={checks.evaluation} />
+          </>)}
         </ul>
         {!isExportable(c) && (
           <p class="muted" style={{ margin: 0, fontSize: 12 }}>本例未勾选 AI 训练用途，完成后只保存在本机，不进入数据集。</p>
@@ -116,17 +143,21 @@ export function FollowupStep({ c, update }: StepProps) {
 
       {complete ? (
         <div class="stack" style={{ gap: 8 }}>
-          <div class="done-banner">病例已完成{isExportable(c) ? '，下次导出时会进入数据集' : ''}</div>
+          <div class="done-banner">
+            病例已完成{skipped ? '（无复诊）' : ''}{isExportable(c) ? '，下次导出时会进入数据集' : ''}
+          </div>
           <button class="btn" onClick={() => update((x) => ({ ...x, status: 'awaiting_followup' }))}>撤回为待复诊，继续修改</button>
         </div>
       ) : (
         <button class="btn primary big" disabled={!checks.canComplete}
           onClick={() => update((x) => ({ ...x, status: 'complete' }))}>
-          {isExportable(c) ? '完成病例，加入数据集' : '完成病例'}
+          {skipped ? '完成病例（无复诊）' : isExportable(c) ? '完成病例，加入数据集' : '完成病例'}
         </button>
       )}
       {!complete && !checks.canComplete && (
-        <span class="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: -12 }}>入库检查全部通过后才能完成（复诊窗口仅提示）</span>
+        <span class="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: -12 }}>
+          {skipped ? '同意书、注射记录、术前照齐全后才能完成' : '入库检查全部通过后才能完成（复诊窗口仅提示）'}
+        </span>
       )}
     </main>
   );

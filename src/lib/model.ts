@@ -83,7 +83,13 @@ export type Case = {
     fitzpatrick: Fitzpatrick | null;
     smoker: boolean;
     priorInjection: PriorInjection;
-    priorNote: string;
+    /** 既往注射时间 YYYY-MM */
+    priorWhen: string;
+    /** 既往注射部位：AreaCode 或 'other' */
+    priorArea: AreaCode | 'other' | '';
+    priorProduct: string;
+    /** 旧版的一体化备注，仅为兼容已有数据保留，新数据不再写入 */
+    priorNote?: string;
   };
   treatmentDate: string;
   treatments: Treatment[];
@@ -91,7 +97,12 @@ export type Case = {
   photos: Photo[];
   pupils?: { photoId: string; left: Vec; right: Vec };
   followup?: Followup;
+  /** 本例无复诊：可不填复诊信息直接完成，导出时标记 followup_skipped，并忽略已有的复诊数据 */
+  followupSkipped?: boolean;
 };
+
+/** 单条注射记录 / 单个进针点的剂量上限（mL）；肉毒素按 U 计，不设上限 */
+export const MAX_ML = 2;
 
 // ---- 选项与中文标签 ----
 

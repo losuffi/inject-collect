@@ -30,7 +30,10 @@ export const photos5 = (phase: Phase) => VIEWS5.map((v) => photo(phase, v));
 export function awaitingCase(over: Partial<Case> = {}): Case {
   const c = newCase('C261016-03', new Date(2026, 9, 16, 10));
   c.consent = { research: true, aiTraining: true, formNo: 'CF-2026-0412', signedOn: '2026-10-16' };
-  c.subject = { ageBand: '25-29', sex: 'F', fitzpatrick: 3, smoker: false, priorInjection: 'gt6m', priorNote: '下巴, 已代谢' };
+  c.subject = {
+    ageBand: '25-29', sex: 'F', fitzpatrick: 3, smoker: false, priorInjection: 'gt6m',
+    priorWhen: '2025-03', priorArea: 'chin', priorProduct: '玻尿酸, 某品牌',
+  };
   c.treatments = [treatment(), treatment({ id: 't2', area: 'lips', dose: 0.8, layer: 'submucosal', tool: '锐针 30G' })];
   c.points = [point()];
   c.photos = photos5('pre');

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Case } from '../lib/model';
 import { listCases } from '../lib/db';
-import { datasetFileName, isExportable } from '../lib/dataset';
+import { datasetFileName, forExport, isExportable } from '../lib/dataset';
 import { FileJobSheet } from '../components/FileJob';
 import { IconBack, IconDownload } from '../components/icons';
 import { runDatasetExport } from '../lib/jobs';
@@ -12,9 +12,10 @@ export function ExportScreen() {
   const [running, setRunning] = useState(false);
   useEffect(() => void listCases().then(setCases), []);
 
-  const ok = (cases ?? []).filter(isExportable);
+  const ok = (cases ?? []).filter(isExportable).map(forExport);
   const done = ok.filter((c) => c.status === 'complete').length;
   const skipped = (cases ?? []).length - ok.length;
+  const noFollowup = ok.filter((c) => c.followupSkipped).length;
   const photos = ok.reduce((n, c) => n + c.photos.length, 0);
 
   return (
@@ -39,6 +40,9 @@ export function ExportScreen() {
           </div>
           {skipped > 0 && (
             <p class="muted" style={{ margin: 0, fontSize: 12 }}>另有 {skipped} 例未同时勾选研究与 AI 训练用途，留在本机，不导出。</p>
+          )}
+          {noFollowup > 0 && (
+            <p class="muted" style={{ margin: 0, fontSize: 12 }}>其中 {noFollowup} 例无复诊数据，在 cases.csv 中标记为 followup_skipped=true。</p>
           )}
           <button class="btn primary big" disabled={!cases || ok.length === 0} onClick={() => setRunning(true)}>
             <IconDownload />生成 {datasetFileName(new Date())}

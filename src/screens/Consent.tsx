@@ -1,5 +1,5 @@
 import type { StepProps } from './types';
-import { AGE_BANDS, FITZ_COLORS, ROMAN, type Case, type Fitzpatrick, type PriorInjection } from '../lib/model';
+import { AGE_BANDS, AREAS, FITZ_COLORS, ROMAN, type Case, type Fitzpatrick, type PriorInjection } from '../lib/model';
 import { OptionGroup } from '../components/common';
 import { caseHref, go } from '../router';
 import { deleteCase } from '../lib/db';
@@ -102,10 +102,33 @@ export function ConsentStep({ c, update }: StepProps) {
           </label>
         </div>
         {subject.priorInjection !== 'none' && (
-          <label class="field">既往注射备注
-            <input class="input" style={{ fontSize: 14 }} value={subject.priorNote} placeholder="时间、部位、产品"
-              onInput={(e) => setSubject({ priorNote: e.currentTarget.value })} />
-          </label>
+          <fieldset class="stack" style={{ gap: 10 }}>
+            <legend class="legend">既往注射详情</legend>
+            <div class="grid2">
+              <label class="field">时间
+                <input class="input mono" type="month" value={subject.priorWhen ?? ''} max={c.treatmentDate.slice(0, 7)}
+                  onInput={(e) => setSubject({ priorWhen: e.currentTarget.value })}
+                  onChange={(e) => setSubject({ priorWhen: e.currentTarget.value })} />
+              </label>
+              <label class="field">部位
+                <select class="select" value={subject.priorArea ?? ''}
+                  onChange={(e) => setSubject({ priorArea: e.currentTarget.value as Case['subject']['priorArea'] })}>
+                  <option value="">请选择</option>
+                  {AREAS.map((a) => <option key={a.code} value={a.code}>{a.label}</option>)}
+                  <option value="other">其他 / 多个部位</option>
+                </select>
+              </label>
+            </div>
+            <label class="field">产品
+              <input class="input" style={{ fontSize: 14 }} value={subject.priorProduct ?? ''} placeholder="如 玻尿酸 某品牌型号"
+                onInput={(e) => setSubject({ priorProduct: e.currentTarget.value })} />
+            </label>
+            {subject.priorNote && (
+              <p class="muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
+                旧版备注：{subject.priorNote}（请拆分填到上面三项，旧备注不会导出）
+              </p>
+            )}
+          </fieldset>
         )}
       </section>
 

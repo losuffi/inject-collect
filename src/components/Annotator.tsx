@@ -6,7 +6,7 @@ import {
   ANGLES, LAYERS, TECHNIQUES, areaLabel, layerLabel, sideLabel, treatmentColor,
   type Case, type InjectionPoint, type Photo, type Vec, type Technique, type LayerCode,
 } from '../lib/model';
-import { formatDose, pointDoseIssues } from '../lib/caseLogic';
+import { clampDose, formatDose, pointDoseIssues } from '../lib/caseLogic';
 import { directionLabel, fromNormDirection, toNorm, toNormDirection } from '../lib/geometry';
 import { uid } from '../lib/ids';
 import { useBlobUrl } from '../hooks';
@@ -490,7 +490,7 @@ function PointPanel({ c, p, n, onChange, onDelete }: {
         </div>
         <div class="stack" style={{ gap: 2 }}>本点剂量
           <span class="row" style={{ gap: 3 }}>
-            <NumberField class="pdose mono" ariaLabel="本点剂量" value={p.dose} onChange={(dose) => onChange({ dose })}
+            <NumberField class="pdose mono" ariaLabel="本点剂量" value={p.dose} onChange={(dose) => onChange({ dose: clampDose(dose, unit) })}
               format={(v) => formatDose(v, unit)} />
             <span class="mono" style={{ fontSize: 12, color: 'var(--ink)' }}>{unit}</span>
           </span>

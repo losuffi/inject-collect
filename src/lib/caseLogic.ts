@@ -1,7 +1,7 @@
 // 病例的派生状态与摘要，纯函数，界面和导出共用。
 import {
   type Case, type CaseStatus, type Phase, type View, type Followup,
-  STANDARD_VIEWS, EXPRESSION_VIEWS, areaLabel, categoryLabel,
+  STANDARD_VIEWS, EXPRESSION_VIEWS, MAX_ML, areaLabel, categoryLabel,
 } from './model';
 import { addDays, daysBetween, isoDate } from './dates';
 
@@ -13,7 +13,10 @@ export function newCase(id: string, now: Date): Case {
     updatedAt: now.toISOString(),
     status: 'draft',
     consent: { research: false, aiTraining: false, formNo: '', signedOn: today },
-    subject: { ageBand: null, sex: null, fitzpatrick: null, smoker: false, priorInjection: 'none', priorNote: '' },
+    subject: {
+      ageBand: null, sex: null, fitzpatrick: null, smoker: false, priorInjection: 'none',
+      priorWhen: '', priorArea: '', priorProduct: '',
+    },
     treatmentDate: today,
     treatments: [],
     points: [],
@@ -131,6 +134,7 @@ export function followupChecks(c: Case) {
   const consent = consentDone(c);
   const treatments = treatmentsDone(c);
   const evaluation = !!c.followup?.gais && !!c.followup?.satisfaction;
+  const basics = consent && treatments && pre.done === pre.total;
   return {
     consent,
     treatments,
@@ -138,9 +142,16 @@ export function followupChecks(c: Case) {
     followupPhotos: fu,
     window: inWindow(c),
     evaluation,
-    // 复诊窗口只做标记，不阻止完成
-    canComplete: consent && treatments && pre.done === pre.total && fu.done === fu.total && evaluation,
+    skipped: !!c.followupSkipped,
+    // 复诊窗口只做标记，不阻止完成；无复诊的病例不检查复诊照和评估
+    canComplete: basics && (!!c.followupSkipped || (fu.done === fu.total && evaluation)),
   };
+}
+
+/** 剂量上限：mL 不超过 MAX_ML，U 不设上限 */
+export function clampDose(n: number, unit: 'mL' | 'U'): number {
+  const v = Math.max(0, Number.isFinite(n) ? n : 0);
+  return unit === 'mL' ? Math.min(MAX_ML, v) : v;
 }
 
 /** 同一条注射记录下各点剂量之和与记录总量不一致的情况 */

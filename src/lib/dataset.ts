@@ -13,15 +13,23 @@ export const photoFileName = (p: Pick<Photo, 'phase' | 'view'>) => `${p.phase}_$
 
 const f4 = (n: number | undefined) => (n === undefined ? '' : n.toFixed(4));
 
+/** 导出视图：标记为无复诊的病例，去掉复诊评估和复诊照片（本机数据不变） */
+export function forExport(c: Case): Case {
+  if (!c.followupSkipped) return c;
+  return { ...c, followup: undefined, photos: c.photos.filter((p) => p.phase !== 'followup') };
+}
+
 /** case.json：去掉同意书信息和本机存储键 */
 export function caseJson(c: Case) {
   const photoFile = new Map(c.photos.map((p) => [p.id, photoFileName(p)]));
+  const { priorNote: _legacy, ...subject } = c.subject;
   return {
     id: c.id,
     createdAt: c.createdAt,
     status: c.status,
     complete: c.status === 'complete',
-    subject: c.subject,
+    followupSkipped: !!c.followupSkipped,
+    subject,
     treatmentDate: c.treatmentDate,
     treatments: c.treatments,
     points: c.points.map((p) => ({ ...p, photo: photoFile.get(p.photoId) ?? null })),
@@ -33,20 +41,20 @@ export function caseJson(c: Case) {
 }
 
 export function datasetEntries(all: Case[], loadBlob: (key: string) => Promise<Uint8Array>): ZipEntry[] {
-  const cases = all.filter(isExportable).sort((a, b) => a.id.localeCompare(b.id));
+  const cases = all.filter(isExportable).map(forExport).sort((a, b) => a.id.localeCompare(b.id));
   const count = (c: Case, phase: Photo['phase']) => c.photos.filter((p) => p.phase === phase).length;
 
   const casesCsv = toCSV(
-    ['case_id', 'created_at', 'treatment_date', 'status', 'complete', 'age_band', 'sex', 'fitzpatrick', 'smoker',
-      'prior_injection', 'prior_note', 'n_treatments', 'n_points', 'n_photos_pre', 'n_photos_immediate',
-      'n_photos_followup', 'followup_date', 'followup_day', 'in_window', 'gais', 'satisfaction', 'adverse',
-      'followup_note'],
+    ['case_id', 'created_at', 'treatment_date', 'status', 'complete', 'followup_skipped', 'age_band', 'sex',
+      'fitzpatrick', 'smoker', 'prior_injection', 'prior_when', 'prior_area', 'prior_product', 'n_treatments',
+      'n_points', 'n_photos_pre', 'n_photos_immediate', 'n_photos_followup', 'followup_date', 'followup_day',
+      'in_window', 'gais', 'satisfaction', 'adverse', 'followup_note'],
     cases.map((c) => [
-      c.id, c.createdAt, c.treatmentDate, c.status, c.status === 'complete', c.subject.ageBand, c.subject.sex,
-      c.subject.fitzpatrick, c.subject.smoker, c.subject.priorInjection, c.subject.priorNote, c.treatments.length,
-      c.points.length, count(c, 'pre'), count(c, 'immediate'), count(c, 'followup'), c.followup?.date,
-      c.followup?.dayN, c.followup ? inWindow(c) : '', c.followup?.gais, c.followup?.satisfaction,
-      c.followup?.adverse.join(';'), c.followup?.note,
+      c.id, c.createdAt, c.treatmentDate, c.status, c.status === 'complete', !!c.followupSkipped, c.subject.ageBand,
+      c.subject.sex, c.subject.fitzpatrick, c.subject.smoker, c.subject.priorInjection, c.subject.priorWhen,
+      c.subject.priorArea, c.subject.priorProduct, c.treatments.length, c.points.length, count(c, 'pre'),
+      count(c, 'immediate'), count(c, 'followup'), c.followup?.date, c.followup?.dayN, c.followup ? inWindow(c) : '',
+      c.followup?.gais, c.followup?.satisfaction, c.followup?.adverse.join(';'), c.followup?.note,
     ]),
   );
 
@@ -102,7 +110,9 @@ function readme(n: number): string {
 照片已去除 EXIF（含定位），长边不超过 2400 像素。
 
 文件
-- cases.csv       每例一行；complete=false 表示尚未完成复诊评估
+- cases.csv       每例一行；complete=false 表示尚未完成。
+                  followup_skipped=true 表示该例无复诊数据（没有复诊评估和复诊照片，不能作为“术前→复诊”训练样本的目标）。
+                  prior_when / prior_area / prior_product 为既往注射的时间（YYYY-MM）、部位、产品。
 - treatments.csv  每条注射记录一行；dose 的单位见 unit（玻尿酸 mL，肉毒素 U）
 - points.csv      每个进针点一行
 - photos.csv      每张照片一行；flags 为导入时的质量提示（dark/bright/blurry）

@@ -3,7 +3,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { toCSV } from '../csv';
 import { datasetEntries, datasetFileName, isExportable } from '../dataset';
 import { writeZip } from '../zip';
-import { awaitingCase } from './fixtures';
+import { awaitingCase, photo } from './fixtures';
 
 const BOM = '﻿';
 const fakeBlob = async (k: string) => new TextEncoder().encode('jpg:' + k);
@@ -60,6 +60,38 @@ describe('数据集导出', () => {
     const row = (id: string) => lines.find((l) => l.startsWith(id + ','))!.split(',');
     expect(row('C261016-03')[ci]).toBe('false');
     expect(row('C261002-01')[ci]).toBe('true');
+  });
+
+  it('既往注射分三列导出', () => {
+    const lines = csvOf(datasetEntries([ok], fakeBlob), 'cases.csv');
+    const h = lines[0].split(',');
+    expect(h).not.toContain('prior_note');
+    const row = lines[1].split(',');
+    expect(row[h.indexOf('prior_when')]).toBe('2025-03');
+    expect(row[h.indexOf('prior_area')]).toBe('chin');
+    // 含逗号的字段被引号包住，这里只检查原文存在
+    expect(lines[1]).toContain('"玻尿酸, 某品牌"');
+  });
+
+  it('无复诊病例打标，并且不导出复诊评估和复诊照片', async () => {
+    const skipped = awaitingCase({
+      id: 'C261016-09', status: 'complete', followupSkipped: true,
+      followup: { date: '2026-10-30', dayN: 14, gais: 2, satisfaction: 4, adverse: [], note: 'x' },
+    });
+    skipped.photos = [...skipped.photos, photo('followup', 'front')];
+    const entries = datasetEntries([skipped, ok], fakeBlob);
+    const lines = csvOf(entries, 'cases.csv');
+    const h = lines[0].split(',');
+    const row = (id: string) => lines.find((l) => l.startsWith(id + ','))!.split(',');
+    expect(row('C261016-09')[h.indexOf('followup_skipped')]).toBe('true');
+    expect(row('C261016-09')[h.indexOf('complete')]).toBe('true');
+    expect(row('C261016-09')[h.indexOf('gais')]).toBe('');
+    expect(row('C261016-09')[h.indexOf('n_photos_followup')]).toBe('0');
+    expect(row('C261016-03')[h.indexOf('followup_skipped')]).toBe('false');
+    expect(entries.some((e) => e.path === 'cases/C261016-09/followup_front.jpg')).toBe(false);
+    const json = JSON.parse(entries.find((e) => e.path === 'cases/C261016-09/case.json')!.data as string);
+    expect(json.followupSkipped).toBe(true);
+    expect(json.followup).toBeNull();
   });
 
   it('points.csv 列', () => {

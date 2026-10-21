@@ -67,6 +67,7 @@ export function PhotosStep({ c, update, flush, query }: StepProps) {
   const counter = (p: Phase) => {
     const pr = photoProgress(c, p);
     if (p === 'immediate') return { text: String(c.photos.filter((x) => x.phase === p).length), warn: false };
+    if (p === 'followup' && c.followupSkipped) return { text: '跳过', warn: false };
     return { text: `${pr.done}/${pr.total}`, warn: p === 'pre' && pr.done < pr.total };
   };
   const front = photoFor(c, 'pre', 'front');

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   newCase, requiredViews, photoProgress, stepDone, deriveStatus, draftReason, caseTitle, doseSummary,
-  followupWindow, followupChecks, pointDoseIssues, flaggedCount, setFollowupDate, formatDose,
+  followupWindow, followupChecks, pointDoseIssues, flaggedCount, setFollowupDate, formatDose, clampDose,
 } from '../caseLogic';
 import { awaitingCase, photo, photos5, point, treatment } from './fixtures';
 
@@ -118,6 +118,23 @@ describe('复诊', () => {
     // 超出窗口只提示，不阻止完成
     c = setFollowupDate(c, '2026-12-30');
     expect(followupChecks(c)).toMatchObject({ window: false, canComplete: true });
+  });
+
+  it('无复诊：不需要复诊照和评估即可完成，但前三步仍要齐全', () => {
+    const c = awaitingCase({ followupSkipped: true });
+    expect(followupChecks(c)).toMatchObject({ skipped: true, evaluation: false, canComplete: true });
+    const missingPre = awaitingCase({ followupSkipped: true });
+    missingPre.photos = missingPre.photos.slice(0, 4);
+    expect(followupChecks(missingPre).canComplete).toBe(false);
+  });
+});
+
+describe('剂量上限', () => {
+  it('mL 最多 2，U 不限', () => {
+    expect(clampDose(2.5, 'mL')).toBe(2);
+    expect(clampDose(1.2, 'mL')).toBe(1.2);
+    expect(clampDose(-1, 'mL')).toBe(0);
+    expect(clampDose(50, 'U')).toBe(50);
   });
 });
 

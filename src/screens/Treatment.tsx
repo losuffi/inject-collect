@@ -1,9 +1,9 @@
 import type { StepProps } from './types';
 import {
-  AREAS, CATEGORIES, LAYERS, TOOLS, areaLabel, sideLabel, treatmentColor, unitFor,
+  AREAS, CATEGORIES, LAYERS, MAX_ML, TOOLS, areaLabel, sideLabel, treatmentColor, unitFor,
   type AreaCode, type Case, type Category, type LayerCode, type Side, type Treatment,
 } from '../lib/model';
-import { formatDose, setFollowupDate } from '../lib/caseLogic';
+import { clampDose, formatDose, setFollowupDate } from '../lib/caseLogic';
 import { uid } from '../lib/ids';
 import { caseHref } from '../router';
 import { FaceMap } from '../components/FaceMap';
@@ -86,7 +86,7 @@ export function TreatmentStep({ c, update }: StepProps) {
 
 function scaleMax(t: Treatment): number {
   if (t.unit === 'U') return Math.max(20, Math.ceil(t.dose / 10) * 10);
-  return Math.max(1, Math.ceil(t.dose));
+  return MAX_ML;
 }
 
 function TreatmentCard({ c, t, onPatch, onRemove }: {
@@ -135,7 +135,7 @@ function TreatmentCard({ c, t, onPatch, onRemove }: {
         <div class="between" style={{ alignItems: 'baseline' }}>
           <span class="muted" style={{ fontSize: 12 }}>剂量</span>
           <span class="row" style={{ alignItems: 'baseline', gap: 8 }}>
-            <NumberField class="dose-input mono" ariaLabel="剂量" value={t.dose} onChange={(dose) => onPatch({ dose })}
+            <NumberField class="dose-input mono" ariaLabel="剂量" value={t.dose} onChange={(dose) => onPatch({ dose: clampDose(dose, t.unit) })}
               format={(n) => formatDose(n, t.unit)} />
             <span class="mono muted" style={{ fontSize: 14 }}>{t.unit}</span>
           </span>
@@ -146,11 +146,14 @@ function TreatmentCard({ c, t, onPatch, onRemove }: {
             {Array.from({ length: 11 }, (_, i) => <span key={i} style={{ height: i === 5 ? 11 : i % 2 ? 5 : 8 }} />)}
           </div>
           <input type="range" min={0} max={max} step={t.unit === 'U' ? 1 : 0.05} value={t.dose} aria-label="拖动调整剂量"
-            onInput={(e) => onPatch({ dose: Math.round(parseFloat(e.currentTarget.value) * 100) / 100 })} />
+            onInput={(e) => onPatch({ dose: clampDose(Math.round(parseFloat(e.currentTarget.value) * 100) / 100, t.unit) })} />
         </div>
         <div class="between mono muted" style={{ fontSize: 11 }}>
           <span>0</span><span>{formatDose(max / 2, t.unit)}</span><span>{formatDose(max, t.unit)} {t.unit}</span>
         </div>
+        {t.unit === 'mL' && t.dose >= MAX_ML && (
+          <span class="muted" style={{ fontSize: 12 }}>单条记录最多 {MAX_ML} mL，超过请再添加一条记录</span>
+        )}
       </div>
 
       <div class="grid3 muted" style={{ fontSize: 12 }}>

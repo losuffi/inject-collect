@@ -41,3 +41,8 @@ src/components/ Annotator（针位标注）、FileJob（打包与保存）、通
 - 复诊取景叠加（getUserMedia）按规格第 9 节暂未实现；复诊未拍的格子里会淡显术前同角度照片作参考。
 - 质量检查只分析画面中央区域；`src/lib/quality.ts` 里的阈值是初值，需要用真实照片校准。
 - 首页备份提醒在超过 7 天未备份（或从未备份）时显示。
+- 第 4 步“本例无复诊”开关（`Case.followupSkipped`）：打开后不需要复诊照和评估即可完成；导出时 `cases.csv` 的
+  `followup_skipped=true`，且不导出该例的复诊评估和复诊照片（本机数据保留，关掉开关即恢复）。
+- 玻尿酸等以 mL 计的剂量，单条记录和单个进针点最多 2 mL（`MAX_ML`）；肉毒素按 U 计不设上限。
+- 既往注射拆为时间（`priorWhen`，YYYY-MM）、部位（`priorArea`）、产品（`priorProduct`）三项；
+  旧版一体化的 `priorNote` 只在界面上提示，不再导出。

@@ -132,9 +132,11 @@ function CaseRow({ c }: { c: Case }) {
   const pre = photoProgress(c, 'pre');
   const fu = photoProgress(c, 'followup');
   const flagged = flaggedCount(c);
+  const skipped = !!c.followupSkipped;
   const badge =
-    c.status === 'complete' ? <span class="badge ok">已完成</span>
-    : c.status === 'awaiting_followup' ? <span class="badge warn">待复诊 · {mmdd(c.followup?.date ?? suggestedFollowupDate(c))}</span>
+    c.status === 'complete' ? <span class="badge ok">已完成{skipped && ' · 无复诊'}</span>
+    : c.status === 'awaiting_followup'
+      ? <span class="badge warn">{skipped ? '待完成 · 无复诊' : `待复诊 · ${mmdd(c.followup?.date ?? suggestedFollowupDate(c))}`}</span>
     : <span class="badge gray">草稿 · {draftReason(c)}</span>;
   const dose = doseSummary(c);
   const [catLabel, ...rest] = dose.split(' ');
@@ -151,11 +153,11 @@ function CaseRow({ c }: { c: Case }) {
           <span>{dose ? <>{catLabel} <span class="mono">{rest.join(' ')}</span></> : '未填写注射记录'}</span>
           <span class="mono">
             {c.status === 'complete' ? (
-              <>复诊 第{c.followup?.dayN}天 · GAIS {c.followup?.gais}</>
+              skipped ? <>术前{pre.done}/{pre.total} · 无复诊数据</> : <>复诊 第{c.followup?.dayN}天 · GAIS {c.followup?.gais}</>
             ) : (
               <>
                 同意{consent ? '✓' : '✗'} 记录{rec ? '✓' : '✗'} 术前{pre.done}/{pre.total}
-                {c.status === 'awaiting_followup' && <> 复诊{fu.done}/{fu.total}</>}
+                {c.status === 'awaiting_followup' && !skipped && <> 复诊{fu.done}/{fu.total}</>}
                 {flagged > 0 && <b class="warn-text"> {flagged}张{flagLabel(c)}</b>}
               </>
             )}

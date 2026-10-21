@@ -66,7 +66,10 @@ async function addPhotos(c: Case, phase: Phase, views: View[], darkViews: View[]
 
 function ready(c: Case, ageBand: Case['subject']['ageBand'], formNo: string) {
   c.consent = { research: true, aiTraining: true, formNo, signedOn: c.treatmentDate };
-  c.subject = { ageBand, sex: 'F', fitzpatrick: 3, smoker: false, priorInjection: 'gt6m', priorNote: '2025 年 3 月 下巴玻尿酸，已基本代谢' };
+  c.subject = {
+    ageBand, sex: 'F', fitzpatrick: 3, smoker: false, priorInjection: 'gt6m',
+    priorWhen: '2025-03', priorArea: 'chin', priorProduct: '玻尿酸',
+  };
 }
 
 export async function seed() {

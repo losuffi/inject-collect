@@ -42,3 +42,12 @@
 .checks li { display: flex; justify-content: space-between; }
 .checks a { color: var(--warn); }
 .done-banner { padding: 12px; border-radius: 10px; background: var(--ok-bg); color: var(--ok-ink); font-size: 14px; text-align: center; }
+.skipcard { align-items: center; border: 1px solid transparent; }
+.skipcard.on { border-color: var(--brand); background: var(--brand-soft); }
+.skipcard input[role='switch'] { appearance: none; -webkit-appearance: none; width: 44px; height: 26px; border-radius: 13px;
+  background: var(--line); position: relative; cursor: pointer; transition: background .15s; order: 2; margin-left: auto; }
+.skipcard input[role='switch']::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+  border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s; }
+.skipcard input[role='switch']:checked { background: var(--brand); }
+.skipcard input[role='switch']:checked::after { transform: translateX(18px); }
+.skipcard input[role='switch']:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
