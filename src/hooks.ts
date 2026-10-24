@@ -54,7 +54,27 @@ export function useCase(id: string) {
   return [c, update, flush] as const;
 }
 
-/** 从 IndexedDB 读取照片并生成 object URL，卸载时释放 */
+// 同一张照片的 object URL 在各组件间共享（引用计数），避免重复解码大图
+const urlCache = new Map<string, { url: Promise<string | undefined>; refs: number }>();
+
+function acquireUrl(key: string) {
+  let e = urlCache.get(key);
+  if (!e) {
+    e = { url: getBlob(key).then((b) => (b ? URL.createObjectURL(b) : undefined)), refs: 0 };
+    urlCache.set(key, e);
+  }
+  e.refs++;
+  return e.url;
+}
+
+function releaseUrl(key: string) {
+  const e = urlCache.get(key);
+  if (!e || --e.refs > 0) return;
+  urlCache.delete(key);
+  void e.url.then((u) => u && URL.revokeObjectURL(u));
+}
+
+/** 从 IndexedDB 读取照片并生成 object URL，最后一个使用者卸载时释放 */
 export function useBlobUrl(key: string | undefined): string | undefined {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
@@ -62,16 +82,11 @@ export function useBlobUrl(key: string | undefined): string | undefined {
       setUrl(undefined);
       return;
     }
-    let u: string | undefined;
     let alive = true;
-    getBlob(key).then((b) => {
-      if (!alive || !b) return;
-      u = URL.createObjectURL(b);
-      setUrl(u);
-    });
+    acquireUrl(key).then((u) => alive && setUrl(u));
     return () => {
       alive = false;
-      if (u) URL.revokeObjectURL(u);
+      releaseUrl(key);
     };
   }, [key]);
   return url;

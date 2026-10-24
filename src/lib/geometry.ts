@@ -41,7 +41,27 @@ export function fromNormDirection(d: { dx: number; dy: number }, pupils: Pupils)
   return { x: d.dx * ex.x + d.dy * ey.x, y: d.dx * ex.y + d.dy * ey.y };
 }
 
-const SECTORS = ['向右', '向右下', '向下', '向左下', '向左', '向左上', '向上', '向右上'];
+export type Box = { x: number; y: number; w: number; h: number };
+
+/**
+ * 预览用的裁切框：包住所有点并留边，宽高比固定（aspect = 宽/高），不小于 minW，不超出图像。
+ * 没有点时返回整张图。
+ */
+export function cropAround(pts: Vec[], W: number, H: number, aspect: number, minW: number): Box {
+  if (!pts.length) return { x: 0, y: 0, w: W, h: H };
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  let w = Math.max((x1 - x0) * 1.8, (y1 - y0) * 1.8 * aspect, minW);
+  let h = w / aspect;
+  if (w > W) { w = W; h = w / aspect; }
+  if (h > H) { h = H; w = h * aspect; }
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const x = Math.min(Math.max(0, cx - w / 2), W - w);
+  const y = Math.min(Math.max(0, cy - h / 2), H - h);
+  return { x, y, w, h };
+}
+
+const SECTORS =['向右', '向右下', '向下', '向左下', '向左', '向左上', '向上', '向右上'];
 
 /** 方向的中文描述（图像中的方向） */
 export function directionLabel(d: { dx: number; dy: number } | undefined, fan: boolean): string {

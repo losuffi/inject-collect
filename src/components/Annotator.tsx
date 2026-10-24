@@ -28,11 +28,21 @@ type Gesture =
 const HIT = 22; // 屏幕像素
 const DRAG = 6;
 
-export function Annotator({ c, photo, update }: { c: Case; photo: Photo; update: (fn: (c: Case) => Case) => void }) {
+/**
+ * activeTreatmentId：只标注某一条注射记录时传入。新点自动归属这条记录，
+ * 其他记录的点淡显、不可选中，避免误拖。
+ */
+export function Annotator({ c, photo, update, activeTreatmentId }: {
+  c: Case; photo: Photo; update: (fn: (c: Case) => Case) => void; activeTreatmentId?: string;
+}) {
   const url = useBlobUrl(photo.blobKey);
   const W = photo.width, H = photo.height;
   const pupils = c.pupils?.photoId === photo.id ? c.pupils : undefined;
-  const points = c.points.filter((p) => p.photoId === photo.id);
+  const allPoints = c.points.filter((p) => p.photoId === photo.id);
+  const active = activeTreatmentId ? c.treatments.find((t) => t.id === activeTreatmentId) : undefined;
+  /** 可编辑的点 */
+  const points = active ? allPoints.filter((p) => p.treatmentId === active.id) : allPoints;
+  const others = active ? allPoints.filter((p) => p.treatmentId !== active.id) : [];
 
   const [mode, setMode] = useState<Mode>(pupils ? 'point' : 'pupils');
   const [pending, setPending] = useState<Vec | null>(null); // 已点的第一只瞳孔
@@ -128,7 +138,7 @@ export function Annotator({ c, photo, update }: { c: Case; photo: Photo; update:
 
   function addPoint(img: Vec) {
     if (!pupils) return;
-    const t = c.treatments.find((x) => x.id === lastTreatment) ?? c.treatments[0];
+    const t = active ?? c.treatments.find((x) => x.id === lastTreatment) ?? c.treatments[0];
     if (!t) return;
     const used = c.points.filter((p) => p.treatmentId === t.id).reduce((s, p) => s + p.dose, 0);
     const remaining = Math.max(0, Math.round((t.dose - used) * 100) / 100);
@@ -251,7 +261,7 @@ export function Annotator({ c, photo, update }: { c: Case; photo: Photo; update:
   // ---- 绘制 ----
   const sel = points.find((p) => p.id === selected);
   const r = 9 * k;
-  const issues = pointDoseIssues(c);
+  const issues = pointDoseIssues(c).filter((i) => !active || i.treatmentId === active.id);
   const numbering = useMemo(() => new Map(points.map((p, i) => [p.id, i + 1])), [points]);
 
   function arrow(p: InjectionPoint, color: string) {
@@ -287,7 +297,12 @@ export function Annotator({ c, photo, update }: { c: Case; photo: Photo; update:
   return (
     <section class="card annot">
       <div class="between" style={{ alignItems: 'baseline' }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>针位标注 · 术前正面照</h2>
+        <h2 class="row" style={{ margin: 0, fontSize: 16, fontWeight: 700, gap: 6 }}>
+          {active ? (<>
+            <span class="dot" style={{ background: treatmentColor(c, active.id)[0] }} />
+            {areaLabel(active.area)} · {sideLabel(active.area, active.side)} 的针孔
+          </>) : '针位标注 · 术前正面照'}
+        </h2>
         <span class="mono muted" style={{ fontSize: 12 }}>{points.length} 个点</span>
       </div>
 
@@ -339,6 +354,10 @@ export function Annotator({ c, photo, update }: { c: Case; photo: Photo; update:
             {pending && (
               <circle cx={pending.x} cy={pending.y} r={10 * k} fill="none" stroke="#1C6670" stroke-width={2 * k} />
             )}
+            {others.map((p) => (
+              <circle key={p.id} cx={p.px.x} cy={p.px.y} r={r * 0.45} fill={treatmentColor(c, p.treatmentId)[0]}
+                stroke="#fff" stroke-width={k} opacity={0.45} />
+            ))}
             {points.map((p) => {
               const [color] = treatmentColor(c, p.treatmentId);
               const isSel = p.id === selected;
@@ -364,7 +383,7 @@ export function Annotator({ c, photo, update }: { c: Case; photo: Photo; update:
 
       {pupils && mode !== 'pupils' && (
         <div class="between" style={{ fontSize: 12 }}>
-          <span class="muted">双指缩放，点住进针点可拖动</span>
+          <span class="muted">{active ? '点照片放针孔，可连续点多个；' : ''}双指缩放，点住针孔可拖动</span>
           <button class="linkbtn" style={{ fontSize: 12 }} onClick={() => { setMode('pupils'); setSelected(null); }}>调整瞳孔基准</button>
         </div>
       )}

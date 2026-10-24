@@ -34,9 +34,13 @@ export function go(href: string, replace = false) {
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parse(location.hash));
   useEffect(() => {
+    let lastPath = location.hash.split('?')[0];
     const on = () => {
       setRoute(parse(location.hash));
-      window.scrollTo(0, 0);
+      // 只改查询参数（如打开/关闭标注编辑器）时保持滚动位置
+      const path = location.hash.split('?')[0];
+      if (path !== lastPath) window.scrollTo(0, 0);
+      lastPath = path;
     };
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);

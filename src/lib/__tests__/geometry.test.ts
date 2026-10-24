@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toNorm, fromNorm, toNormDirection, fromNormDirection, directionLabel } from '../geometry';
+import { toNorm, fromNorm, toNormDirection, fromNormDirection, directionLabel, cropAround } from '../geometry';
 
 describe('瞳孔坐标归一化', () => {
   const pupils = { left: { x: 100, y: 200 }, right: { x: 200, y: 200 } };
@@ -50,6 +50,28 @@ describe('瞳孔坐标归一化', () => {
     expect(px.x / Math.hypot(px.x, px.y)).toBeCloseTo(0);
     expect(px.y / Math.hypot(px.x, px.y)).toBeCloseTo(-1);
     expect(toNormDirection({ x: 0, y: 0 }, tilted)).toBeUndefined();
+  });
+
+  it('预览裁切框：包住所有点、比例固定、不出界', () => {
+    const W = 1200, H = 1600;
+    expect(cropAround([], W, H, 4 / 3, 400)).toEqual({ x: 0, y: 0, w: W, h: H });
+    const pts = [{ x: 500, y: 1040 }, { x: 700, y: 1090 }];
+    const b = cropAround(pts, W, H, 16 / 10, 420);
+    expect(b.w / b.h).toBeCloseTo(1.6);
+    for (const p of pts) {
+      expect(p.x).toBeGreaterThan(b.x);
+      expect(p.x).toBeLessThan(b.x + b.w);
+      expect(p.y).toBeGreaterThan(b.y);
+      expect(p.y).toBeLessThan(b.y + b.h);
+    }
+    // 靠近边缘的点：框被推回图内
+    const edge = cropAround([{ x: 10, y: 1590 }], W, H, 16 / 10, 420);
+    expect(edge.x).toBe(0);
+    expect(edge.y + edge.h).toBeCloseTo(H);
+    // 很分散的点：框不超过整张图
+    const wide = cropAround([{ x: 0, y: 0 }, { x: 1200, y: 1600 }], W, H, 16 / 10, 420);
+    expect(wide.w).toBeLessThanOrEqual(W);
+    expect(wide.h).toBeLessThanOrEqual(H);
   });
 
   it('方向文字描述', () => {

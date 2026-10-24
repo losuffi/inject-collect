@@ -1,19 +1,42 @@
 import type { StepProps } from './types';
 import {
   AREAS, CATEGORIES, LAYERS, MAX_ML, TOOLS, areaLabel, sideLabel, treatmentColor, unitFor,
-  type AreaCode, type Case, type Category, type LayerCode, type Side, type Treatment,
+  type AreaCode, type Case, type Category, type LayerCode, type Photo, type Side, type Treatment,
 } from '../lib/model';
-import { clampDose, formatDose, setFollowupDate } from '../lib/caseLogic';
+import { clampDose, formatDose, photoFor, pointDoseIssues, setFollowupDate } from '../lib/caseLogic';
 import { uid } from '../lib/ids';
-import { caseHref } from '../router';
+import { caseHref, go } from '../router';
 import { FaceMap } from '../components/FaceMap';
 import { NumberField } from '../components/NumberField';
 import { TextSelect } from '../components/TextSelect';
+import { PointsPreview } from '../components/PointsPreview';
+import { PointEditor } from '../components/PointEditor';
+import { TakeFrontPhoto } from '../components/TakeFrontPhoto';
 import './steps.css';
 
-export function TreatmentStep({ c, update }: StepProps) {
+// 标注编辑器通过 ?mark=<记录 id | all> 打开，手机返回键即可关闭
+let editorPushed = false;
+
+export function TreatmentStep({ c, update, flush, query }: StepProps) {
   const patch = (id: string, p: Partial<Treatment>) =>
     update((x) => ({ ...x, treatments: x.treatments.map((t) => (t.id === id ? { ...t, ...p } : t)) }));
+
+  const front = photoFor(c, 'pre', 'front');
+  const mark = query.get('mark');
+  if (!mark) editorPushed = false; // 用返回键关闭时也复位
+  const openEditor = (tid: string) => {
+    editorPushed = true;
+    location.hash = caseHref(c.id, 'treatment', `mark=${encodeURIComponent(tid)}`);
+  };
+  const closeEditor = () => {
+    flush();
+    if (editorPushed) {
+      editorPushed = false;
+      history.back();
+    } else {
+      go(caseHref(c.id, 'treatment'), true);
+    }
+  };
 
   // iOS 的日期选择器有时只触发 change；改治疗日后复诊天数随之重算
   function setTreatmentDate(v: string) {
@@ -56,24 +79,40 @@ export function TreatmentStep({ c, update }: StepProps) {
         </label>
       </div>
 
-      <div class="card row" style={{ gap: 14, padding: 12 }}>
-        <FaceMap c={c} />
-        <div class="stack" style={{ gap: 8, fontSize: 13, lineHeight: 1.5, color: 'var(--ink2)' }}>
+      <div class="card row" style={{ gap: 14, padding: 12, alignItems: 'flex-start' }}>
+        {front ? (
+          <button class="pts-summary" onClick={() => openEditor('all')} aria-label="打开正面照查看和编辑全部针孔">
+            <PointsPreview c={c} photo={front} aspect={3 / 4} label={`术前正面照，共 ${c.points.length} 个针孔`} />
+          </button>
+        ) : (
+          <FaceMap c={c} />
+        )}
+        <div class="stack" style={{ gap: 8, fontSize: 13, lineHeight: 1.5, color: 'var(--ink2)', minWidth: 0 }}>
           {c.treatments.map((t) => (
             <span key={t.id} class="row" style={{ gap: 6 }}>
               <span class="dot" style={{ background: treatmentColor(c, t.id)[0] }} />
               <span>
-                {areaLabel(t.area)}{t.side !== 'mid' && sideLabel(t.area, t.side)} · {c.points.filter((p) => p.treatmentId === t.id).length} 个进针点
+                {areaLabel(t.area)}{t.side !== 'mid' && sideLabel(t.area, t.side)} · {c.points.filter((p) => p.treatmentId === t.id).length} 个针孔
               </span>
             </span>
           ))}
-          <span class="muted" style={{ fontSize: 12 }}>位点在第 3 步“针位标注”里直接点在术前照上，这里自动汇总</span>
+          {front ? (
+            <span class="muted" style={{ fontSize: 12 }}>针孔标在术前正面照上。点左侧照片查看全部，或在下面每条记录里标注。</span>
+          ) : (<>
+            <span class="muted" style={{ fontSize: 12 }}>拍一张术前正面照，就能把每条注射的针孔直接点在照片上。</span>
+            <TakeFrontPhoto update={update} flush={flush} />
+          </>)}
         </div>
       </div>
 
       {c.treatments.map((t) => (
-        <TreatmentCard key={t.id} c={c} t={t} onPatch={(p) => patch(t.id, p)} onRemove={() => remove(t)} />
+        <TreatmentCard key={t.id} c={c} t={t} front={front} onMark={() => openEditor(t.id)}
+          onPatch={(p) => patch(t.id, p)} onRemove={() => remove(t)} />
       ))}
+
+      {mark && front && (mark === 'all' || c.treatments.some((t) => t.id === mark)) && (
+        <PointEditor c={c} photo={front} treatmentId={mark === 'all' ? undefined : mark} update={update} onClose={closeEditor} />
+      )}
 
       <button class="btn dashed" onClick={add}>+ 添加一条注射</button>
       <p class="muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -89,13 +128,14 @@ function scaleMax(t: Treatment): number {
   return MAX_ML;
 }
 
-function TreatmentCard({ c, t, onPatch, onRemove }: {
-  c: Case; t: Treatment; onPatch: (p: Partial<Treatment>) => void; onRemove: () => void;
+function TreatmentCard({ c, t, front, onMark, onPatch, onRemove }: {
+  c: Case; t: Treatment; front?: Photo; onMark: () => void; onPatch: (p: Partial<Treatment>) => void; onRemove: () => void;
 }) {
   const [color, fill] = treatmentColor(c, t.id);
   const max = scaleMax(t);
   const pct = Math.min(100, (t.dose / max) * 100);
   const pointCount = c.points.filter((p) => p.treatmentId === t.id).length;
+  const issue = pointDoseIssues(c).find((i) => i.treatmentId === t.id);
   const tools = t.tool && !TOOLS.includes(t.tool) ? [...TOOLS, t.tool] : TOOLS;
 
   function setCategory(category: Category) {
@@ -132,6 +172,30 @@ function TreatmentCard({ c, t, onPatch, onRemove }: {
       </div>
 
       <div class="stack" style={{ gap: 6 }}>
+        <div class="between" style={{ fontSize: 12 }}>
+          <span class="muted">针孔位置</span>
+          {front && pointCount > 0 && <button class="linkbtn" style={{ fontSize: 12, padding: 0 }} onClick={onMark}>编辑针孔</button>}
+        </div>
+        {!front ? (
+          <span class="muted" style={{ fontSize: 12 }}>先拍术前正面照（上方或第 3 步），再把针孔标在照片上</span>
+        ) : pointCount === 0 ? (
+          <button class="btn dashed small" onClick={onMark}>+ 在正面照上标注针孔</button>
+        ) : (
+          <button class="pts-card" onClick={onMark} aria-label={`${pointCount} 个针孔，点按编辑`}>
+            <PointsPreview c={c} photo={front} treatmentId={t.id} aspect={16 / 10}
+              label={`${areaLabel(t.area)}的 ${pointCount} 个针孔`} />
+            <span class="pts-count mono">{pointCount} 个针孔</span>
+          </button>
+        )}
+        {issue && issue.count > 0 && (
+          <span class="warn-text" style={{ fontSize: 12 }}>
+            各针孔剂量合计 <span class="mono">{formatDose(issue.sum, t.unit)}</span>，与本条总量
+            <span class="mono"> {formatDose(issue.dose, t.unit)} {t.unit}</span> 不一致
+          </span>
+        )}
+      </div>
+
+      <div class="stack" style={{ gap: 6 }}>
         <div class="between" style={{ alignItems: 'baseline' }}>
           <span class="muted" style={{ fontSize: 12 }}>剂量</span>
           <span class="row" style={{ alignItems: 'baseline', gap: 8 }}>
@@ -165,7 +229,7 @@ function TreatmentCard({ c, t, onPatch, onRemove }: {
           <TextSelect ariaLabel="工具" value={t.tool} onChange={(tool) => onPatch({ tool })}
             options={tools.map((x) => ({ value: x, label: x }))} />
         </div>
-        <div class="stack" style={{ gap: 2 }}>进针点
+        <div class="stack" style={{ gap: 2 }}>针孔数
           <b class="mono" style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500 }}>{pointCount}</b>
         </div>
       </div>

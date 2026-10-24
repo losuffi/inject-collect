@@ -51,3 +51,17 @@
 .skipcard input[role='switch']:checked { background: var(--brand); }
 .skipcard input[role='switch']:checked::after { transform: translateX(18px); }
 .skipcard input[role='switch']:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* 正面照上的针孔预览 */
+.pts-preview { display: block; width: 100%; border-radius: 8px; background: #D3DCE0; }
+.pts-summary { flex: none; width: 112px; padding: 0; border: 0; background: none; border-radius: 8px; overflow: hidden; cursor: pointer; }
+.pts-card { position: relative; padding: 0; border: 0; background: none; border-radius: 8px; overflow: hidden; cursor: pointer; display: block; width: 100%; }
+.pts-count { position: absolute; right: 8px; bottom: 8px; padding: 2px 8px; border-radius: 10px; background: rgba(24, 33, 31, 0.72);
+  color: #fff; font-size: 12px; }
+.pts-summary:focus-visible, .pts-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.btn.dashed.small { height: 44px; font-size: 14px; }
+
+.editor-overlay { position: fixed; inset: 0; z-index: 40; background: var(--bg); overflow-y: auto; overscroll-behavior: contain; }
+.editor-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 10px 20px; padding-top: max(10px, env(safe-area-inset-top)); background: var(--bg); border-bottom: 1px solid var(--line2); }
+.editor-body { max-width: 480px; margin: 0 auto; padding: 12px 12px calc(24px + env(safe-area-inset-bottom)); }
